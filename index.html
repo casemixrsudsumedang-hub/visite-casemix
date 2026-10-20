@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0e7c6b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Visite Casemix">
+<title>Visite Casemix</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--teal:#0e7c6b;--teal-d:#0a5f52;--teal-s:#e4f3ef;--gold:#d4a017;--gold-s:#fbf3dd;--gold-t:#8a6d1a;--red:#b91c1c;--red-s:#fde8e8;--green:#166534;--green-s:#e3f4e6;--line:#e2e8f0;--text:#0f172a;--muted:#596779;--bg:#f4f6fa}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+#app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg)}
+header.top{background:linear-gradient(135deg,#0e7c6b,#129682);color:#fff;padding:20px 20px 18px}
+header.top .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+header.top h1{margin:0;font-size:22px}
+header.top p{margin:4px 0 0;font-size:13px;color:#e4f3ef}
+.badge{font-size:12px;font-weight:700;color:var(--teal-d);background:#fde047;border-radius:999px;padding:4px 10px;white-space:nowrap}
+main{flex:1;padding:16px 20px 96px;display:flex;flex-direction:column;gap:12px}
+nav.bottom{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#fff;border-top:1px solid var(--line);display:grid;grid-auto-flow:column;grid-auto-columns:1fr;padding:6px 0 12px}
+nav.bottom button{border:0;background:none;min-height:48px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer}
+nav.bottom button.on{color:var(--teal);font-weight:700}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.card.click{cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.card.warn{border-left:4px solid var(--gold)}
+.title{margin:0;font-size:16px;font-weight:700}
+.sub{margin:0;font-size:13px;color:var(--muted)}
+.body{margin:0;font-size:14px;line-height:1.45}
+.pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:4px 10px}
+.p-wait{background:var(--gold-s);color:var(--gold-t)}.p-late{background:var(--red-s);color:var(--red)}
+.p-ok{background:var(--green-s);color:var(--green)}.p-info{background:var(--teal-s);color:var(--teal-d)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:999px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;min-height:44px}
+.chip.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:700}
+label{font-size:13px;font-weight:600;color:#334155}
+input,select,textarea{width:100%;border:1px solid #8a99ab;border-radius:12px;padding:12px 14px;font-size:16px;font-family:inherit;background:#fff;color:var(--text)}
+.f{display:flex;flex-direction:column;gap:6px}
+.btn{min-height:52px;border:0;border-radius:14px;background:var(--teal);color:#fff;font-size:16px;font-weight:700;cursor:pointer;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.btn.sec{background:#fff;color:var(--teal);border:1px dashed var(--teal);font-size:14px;min-height:48px}
+.btn.sm{min-height:44px;font-size:14px;border-radius:12px}
+.btn.wa{background:#fff;color:#166534;border:1px solid #166534;font-size:14px;min-height:44px;border-radius:12px}
+.btn:disabled{opacity:.6}
+.link{border:0;background:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer;min-height:44px;padding:0 6px;text-decoration:underline}
+.linkd{border:0;background:none;color:var(--teal);font-size:14px;font-weight:600;cursor:pointer;min-height:44px;padding:0;text-decoration:underline;text-align:left}
+.back{border:0;background:none;color:#fff;font-size:15px;font-weight:600;cursor:pointer;min-height:44px;padding:0;margin-left:-4px}
+.opt{display:flex;align-items:center;gap:12px;min-height:48px;background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:0 14px;font-size:14px}
+.opt input{width:20px;height:20px;accent-color:var(--teal)}
+.opt.sel{border:2px solid var(--teal)}
+.info{background:var(--teal-s);color:var(--teal-d);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.45;margin:0}
+.err{background:var(--red-s);color:var(--red);border-radius:12px;padding:10px 14px;font-size:14px}
+.ok{background:var(--green-s);color:var(--green);border-radius:12px;padding:10px 14px;font-size:14px}
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat .n{font-size:28px;font-weight:700;color:var(--teal);margin:0}
+.bar{height:10px;border-radius:999px;background:var(--line)}.bar>div{height:10px;border-radius:999px}
+.login{background:linear-gradient(135deg,#0e7c6b,#129682);padding:64px 24px 88px;border-radius:0 0 32px 32px;color:#fff}
+.login h1{margin:12px 0 4px;font-size:28px;letter-spacing:.5px}.login p{margin:0;font-weight:700;color:#fde047}
+.loginform{margin:-48px 20px 0;background:#fff;border:1px solid var(--line);border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 8px 24px rgba(15,23,42,.08)}
+.loginform h2{margin:0;font-size:20px}
+.foot{font-size:13px;color:var(--muted);text-align:center;margin:20px 28px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* dokumen cetak */
+.doc{background:#fff;color:#000;font-size:13px;line-height:1.4;gap:10px}
+.doc h2{margin:0;font-size:15px;text-align:center}
+.doc table{width:100%;border-collapse:collapse}
+.doc th,.doc td{border:1px solid #000;padding:5px 6px;text-align:left;vertical-align:top;font-size:12px}
+.doc .meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px}
+.doc .ttd{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:20px;text-align:center}
+.doc .ttd div{padding-top:48px;border-bottom:0}
+.doc .ttd span{display:block;border-top:1px solid #000;padding-top:4px}
+.pb{page-break-before:always}
+@media print{
+  body{background:#fff}#app{max-width:none;background:#fff}
+  header.top,nav.bottom,.noprint{display:none!important}
+  main{padding:0}main.doc{padding:0}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ====== Project Supabase ======
+var SUPABASE_URL = 'https://pjnnyrajzbcvuodjwjcw.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_ZU8cKP94_i0uxg_wl5BdIw_kJRqe1-u';
+// ==============================
+
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var app = document.getElementById('app');
+var S = { me: null, tab: null, filter: 'semua', dpjps: [], pasienId: null, temuanId: null, view: 'list', prefill: null, ckTgl: hariIni(), recovery: /type=recovery/.test(location.hash) };
+
+var CHECK = [
+ 'Identitas pasien dan nomor rekam medis sesuai',
+ 'SEP/eligibilitas dan episode pelayanan sesuai',
+ 'DPJP dan tanggal pelayanan tercatat',
+ 'Asesmen awal dan CPPT terkini tersedia serta autentik',
+ 'Diagnosis utama/sekunder dan perkembangan klinis terdokumentasi',
+ 'Komorbid/komplikasi memiliki bukti dan dokumentasi yang relevan',
+ 'Tindakan/prosedur memiliki laporan dan autentikasi yang sesuai',
+ 'Hasil penunjang relevan tersedia dan dapat ditelusuri',
+ 'Obat, alat kesehatan, ICU/ventilator, transfusi, dan layanan khusus tercatat bila diberikan',
+ 'Resume medis/ringkasan sementara dan rencana pulang ditindaklanjuti',
+ 'Gap dicatat pada Form Monitoring Durante dengan PIC dan target',
+ 'Status tindak lanjut dan hasil verifikasi ulang tercatat'
+];
+var JAWABAN = { sudah_diperbaiki:'Sudah diperbaiki di RME', tidak_sesuai:'Tidak sesuai, dijelaskan', diskusi_langsung:'Perlu diskusi langsung' };
+var VAPID_PUBLIC = 'BGN6ERcWhp62dGrR8lym20RiPL5yFAPGhPp1P7ZkGScQMf2ksTq0QdF3MWWlH6sgFgXu_Uam1xhEOBsbDUCZjqc';
+var ROLE = { admin:'Admin', casemix:'Dokter Casemix', dpjp:'DPJP' };
+
+function hariIni(){ var d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function tgl(t){ if(!t) return '-'; return new Date(t).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }
+function tglD(d){ if(!d) return '-'; return new Date(d + 'T00:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}); }
+function terlambat(t){ return t.status === 'menunggu' && t.target && new Date(t.target) < new Date(); }
+function pillTemuan(t){
+  if (t.status === 'selesai') return '<span class="pill p-ok">Selesai</span>';
+  if (t.status === 'dijawab') return '<span class="pill p-info">Sudah dijawab</span>';
+  if (terlambat(t)) return '<span class="pill p-late">Terlambat</span>';
+  return '<span class="pill p-wait">Menunggu DPJP</span>';
+}
+function waLink(nomor, nama){
+  var n = String(nomor || '').replace(/\D/g, '');
+  if (!n) return '';
+  if (n.charAt(0) === '0') n = '62' + n.slice(1); else if (n.charAt(0) === '8') n = '62' + n;
+  var teks = 'Selamat siang ' + (nama || 'dokter') + ', ada klarifikasi casemix yang menunggu jawaban di aplikasi Visite Casemix. Mohon dibuka: ' + location.origin + location.pathname;
+  return 'https://wa.me/' + n + '?text=' + encodeURIComponent(teks);
+}
+function waBtn(pic){
+  if (!pic) return '';
+  var l = waLink(pic.wa_nomor, pic.nama);
+  return l ? '<a class="btn wa" href="' + l + '" target="_blank" rel="noopener">Ingatkan lewat WhatsApp</a>' : '<p class="sub">Nomor WhatsApp DPJP belum diisi.</p>';
+}
+
+
+// ---------- Notifikasi (web push) ----------
+function b64ToU8(b){ var p = '='.repeat((4 - b.length % 4) % 4); var r = atob((b + p).replace(/-/g,'+').replace(/_/g,'/')), o = new Uint8Array(r.length); for (var i = 0; i < r.length; i++) o[i] = r.charCodeAt(i); return o; }
+function pushBisa(){ return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window) && location.protocol.indexOf('http') === 0; }
+async function swReg(){ if (!pushBisa()) return null; try { return await Promise.race([navigator.serviceWorker.ready, new Promise(function(r){ setTimeout(function(){ r(null); }, 3000); })]); } catch (e) { return null; } }
+async function statusPush(){
+  if (!pushBisa()) return 'tidak_didukung';
+  if (Notification.permission === 'denied') return 'diblokir';
+  var reg = await swReg(); if (!reg) return 'tidak_didukung';
+  var sub = await reg.pushManager.getSubscription();
+  return sub && Notification.permission === 'granted' ? 'aktif' : 'mati';
+}
+async function simpanLangganan(sub){
+  var j = sub.toJSON();
+  return sb.from('push_langganan').upsert({ user_id: S.me.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }, { onConflict: 'endpoint' });
+}
+async function aktifkanPush(){
+  var izin = await Notification.requestPermission();
+  if (izin !== 'granted') return 'Izin notifikasi tidak diberikan.';
+  var reg = await swReg(); if (!reg) return 'Browser ini belum mendukung notifikasi.';
+  var sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(VAPID_PUBLIC) });
+  var x = await simpanLangganan(sub);
+  return x.error ? 'Gagal menyimpan: ' + x.error.message : null;
+}
+async function matikanPush(){
+  var reg = await swReg(); var sub = reg && await reg.pushManager.getSubscription();
+  if (sub){ await sb.from('push_langganan').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe(); }
+}
+async function sinkronPush(){
+  try { if (await statusPush() === 'aktif'){ var reg = await swReg(); var sub = await reg.pushManager.getSubscription(); if (sub) await simpanLangganan(sub); } } catch (e) {}
+}
+async function lepasPushLokal(){
+  try { var reg = await swReg(); var sub = reg && await reg.pushManager.getSubscription(); if (sub) await sb.from('push_langganan').delete().eq('endpoint', sub.endpoint); } catch (e) {}
+}
+if (pushBisa()) navigator.serviceWorker.register('sw.js').catch(function(){});
+
+function header(judul, sub, back){
+  return '<header class="top"><div class="row">' +
+    (back ? '<button class="back" data-act="back">&larr; Kembali</button>' : '<h1>' + esc(judul) + '</h1>') +
+    '<span><span class="badge">' + esc(ROLE[S.me.role] || '') + '</span> ' +
+    '<button class="link" data-act="keluar">Keluar</button></span></div>' +
+    (back ? '<h1 style="margin-top:6px">' + esc(judul) + '</h1>' : '') +
+    (sub ? '<p>' + esc(sub) + '</p>' : '') + '</header>';
+}
+function nav(items){
+  return '<nav class="bottom" aria-label="Menu utama">' + items.map(function(i){
+    return '<button data-tab="' + i[0] + '" class="' + (S.tab === i[0] ? 'on' : '') + '"' + (S.tab === i[0] ? ' aria-current="page"' : '') + '>' + i[1] + '</button>';
+  }).join('') + '</nav>';
+}
+function menu(){
+  return S.me.role === 'dpjp' ? nav([['klar','Klarifikasi'],['riwayat','Riwayat'],['akun','Akun']])
+    : nav([['pasien','Pasien'],['klar','Klarifikasi'],['rekap','Rekap'],['akun','Akun']]);
+}
+function shell(head, inner, navHtml){ app.innerHTML = head + '<main>' + inner + '</main>' + (navHtml || ''); }
+
+// ---------- Login, lupa sandi ----------
+function showLogin(msg, ok){
+  app.innerHTML = '<div class="login"><h1>VISITE CASEMIX</h1><p>RSUD Umar Wirahadikusumah</p></div>' +
+    '<form class="loginform" id="lf"><h2>Masuk</h2>' + (msg ? '<div class="' + (ok ? 'ok' : 'err') + '" role="alert">' + esc(msg) + '</div>' : '') +
+    '<div class="f"><label for="em">Email RS</label><input id="em" type="email" autocomplete="username" required></div>' +
+    '<div class="f"><label for="pw">Kata sandi</label><input id="pw" type="password" autocomplete="current-password"></div>' +
+    '<button class="btn" type="submit">Masuk</button>' +
+    '<button class="linkd" type="button" id="lupa">Lupa kata sandi?</button>' +
+    '<p class="sub">Gunakan akun pribadi Anda. Tidak ada akun bersama.</p></form>' +
+    '<p class="foot">Setiap akses dan perubahan dicatat dalam riwayat perubahan.</p>';
+  document.getElementById('lf').onsubmit = async function(e){
+    e.preventDefault();
+    var r = await sb.auth.signInWithPassword({ email: document.getElementById('em').value.trim(), password: document.getElementById('pw').value });
+    if (r.error) return showLogin('Email atau kata sandi salah.');
+    start();
+  };
+  document.getElementById('lupa').onclick = async function(){
+    var em = document.getElementById('em').value.trim();
+    if (!em) return showLogin('Isi email Anda dulu, lalu tekan "Lupa kata sandi?".');
+    var r = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
+    if (r.error) return showLogin('Gagal mengirim: ' + r.error.message);
+    showLogin('Jika email terdaftar, tautan untuk membuat kata sandi baru sudah dikirim. Cek kotak masuk dan folder spam.', true);
+  };
+}
+function showSetPassword(msg){
+  app.innerHTML = '<div class="login"><h1>VISITE CASEMIX</h1><p>RSUD Umar Wirahadikusumah</p></div>' +
+    '<form class="loginform" id="np"><h2>Buat kata sandi baru</h2>' + (msg ? '<div class="err" role="alert">' + esc(msg) + '</div>' : '') +
+    '<div class="f"><label for="n1">Kata sandi baru (minimal 8 karakter)</label><input id="n1" type="password" autocomplete="new-password" required minlength="8"></div>' +
+    '<button class="btn" type="submit">Simpan</button></form>';
+  document.getElementById('np').onsubmit = async function(e){
+    e.preventDefault();
+    var r = await sb.auth.updateUser({ password: document.getElementById('n1').value });
+    if (r.error) return showSetPassword('Gagal: ' + r.error.message);
+    S.recovery = false; history.replaceState(null, '', location.pathname); start();
+  };
+}
+sb.auth.onAuthStateChange(function(ev){ if (ev === 'PASSWORD_RECOVERY'){ S.recovery = true; showSetPassword(); } });
+
+// ---------- Mulai ----------
+async function start(){
+  var s = await sb.auth.getSession();
+  if (S.recovery && s.data.session) return showSetPassword();
+  if (!s.data.session) return showLogin();
+  var p = await sb.from('profiles').select('*').eq('id', s.data.session.user.id).single();
+  if (p.error || !p.data || !p.data.aktif){ await sb.auth.signOut(); return showLogin('Akun belum terdaftar atau tidak aktif. Hubungi admin.'); }
+  S.me = p.data; S.email = s.data.session.user.email;
+  S.tab = S.me.role === 'dpjp' ? 'klar' : 'pasien';
+  S.view = 'list';
+  await muatDpjp();
+  sinkronPush();
+  render();
+}
+async function muatDpjp(){
+  if (S.me.role === 'dpjp') return;
+  var d = await sb.from('profiles').select('id,nama,wa_nomor').eq('role','dpjp').eq('aktif',true).order('nama');
+  S.dpjps = d.data || [];
+}
+
+async function render(){
+  app.innerHTML = '<main><p class="sub">Memuat...</p></main>';
+  var v = S.view;
+  if (v === 'detail') return viewDetail();
+  if (v === 'jawab') return viewJawab();
+  if (v === 'tambahPasien') return viewFormPasien(false);
+  if (v === 'ubahPasien') return viewFormPasien(true);
+  if (v === 'tambahTemuan') return viewTambahTemuan();
+  if (v === 'cetak') return viewCetak();
+  if (v === 'pengguna') return viewPengguna();
+  if (S.tab === 'akun') return viewAkun();
+  if (S.me.role === 'dpjp') return viewKlar(S.tab === 'riwayat');
+  if (S.tab === 'klar') return viewKlar(false);
+  if (S.tab === 'rekap') return viewRekap();
+  return viewPasien();
+}
+
+// ---------- Daftar pasien ----------
+async function viewPasien(){
+  var r = await sb.from('pasien').select('*, dpjp:profiles!pasien_dpjp_id_fkey(nama), temuan(id,status,target)').order('created_at',{ascending:false});
+  if (r.error) return shell(header('Pasien Prioritas'), '<div class="err">Gagal memuat data.</div>', menu());
+  var list = r.data.filter(function(p){
+    var open = p.temuan.filter(function(t){ return t.status === 'menunggu'; });
+    if (S.filter === 'menunggu') return open.length > 0;
+    if (S.filter === 'selesai') return p.status === 'selesai';
+    return true;
+  });
+  var chips = [['semua','Semua'],['menunggu','Menunggu DPJP'],['selesai','Selesai']].map(function(c){
+    return '<button class="chip' + (S.filter === c[0] ? ' on' : '') + '" data-filter="' + c[0] + '">' + c[1] + '</button>';
+  }).join('');
+  var cards = list.map(function(p){
+    var open = p.temuan.filter(function(t){ return t.status === 'menunggu'; });
+    var late = open.some(terlambat);
+    var pill = p.status === 'selesai' ? '<span class="pill p-ok">Selesai</span>' : late ? '<span class="pill p-late">Target terlewat</span>' :
+      open.length ? '<span class="pill p-wait">Menunggu DPJP (' + open.length + ')</span>' : '<span class="pill p-info">Proses verifikasi</span>';
+    return '<button class="card click" data-pasien="' + p.id + '"><div style="display:flex;justify-content:space-between;gap:8px"><p class="title">' + esc(p.inisial) +
+      ' <span class="sub">&middot; RM ' + esc(p.no_rm) + '</span></p><span class="pill p-info">' + esc(p.ruangan) + '</span></div>' +
+      '<p class="sub">' + esc(p.kondisi || '') + (p.dpjp ? ' &middot; DPJP ' + esc(p.dpjp.nama) : '') + '</p><div>' + pill + '</div></button>';
+  }).join('') || '<p class="sub">Belum ada pasien.</p>';
+  shell(header('Pasien Prioritas', new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})),
+    '<div class="chips">' + chips + '</div>' + cards + '<button class="btn sec" data-act="tambahPasien">+ Tambah pasien</button>', menu());
+}
+
+// ---------- Form pasien (tambah / ubah) ----------
+async function viewFormPasien(edit){
+  var p = {};
+  if (edit){ var r = await sb.from('pasien').select('*').eq('id', S.pasienId).single(); p = r.data || {}; }
+  var opts = S.dpjps.map(function(d){ return '<option value="' + d.id + '"' + (d.id === p.dpjp_id ? ' selected' : '') + '>' + esc(d.nama) + '</option>'; }).join('');
+  function fld(id, lab, val, extra){ return '<div class="f"><label for="' + id + '">' + lab + '</label><input id="' + id + '" value="' + esc(val || '') + '" ' + (extra || '') + '></div>'; }
+  shell(header(edit ? 'Ubah Data Pasien' : 'Tambah Pasien', 'Hanya inisial dan No. RM. Jangan isi nama lengkap, NIK, atau alamat.', true),
+    '<form id="pf" class="card">' + fld('rm','No. RM',p.no_rm,'required') + fld('in','Inisial pasien',p.inisial,'required maxlength="12" placeholder="contoh: Tn. A.S."') +
+    fld('rg','Ruangan',p.ruangan,'required placeholder="contoh: ICU"') +
+    '<div class="f"><label for="dp">DPJP</label><select id="dp"><option value="">Pilih DPJP</option>' + opts + '</select></div>' +
+    fld('kd','Kondisi / alasan prioritas',p.kondisi,'placeholder="contoh: Ventilator hari ke-3"') +
+    '<div class="row2"><div class="f"><label for="tm">Tanggal masuk</label><input id="tm" type="date" value="' + esc(p.tgl_masuk || '') + '"></div>' +
+    '<div class="f"><label for="pp">Perkiraan pulang</label><input id="pp" type="date" value="' + esc(p.perkiraan_pulang || '') + '"></div></div>' +
+    fld('sp','SEP/episode (opsional)',p.sep,'placeholder="boleh dikosongkan"') +
+    '<p class="sub">Penyimpanan nomor SEP menunggu keputusan RS. Kosongkan bila belum diizinkan.</p>' +
+    (edit ? '<div class="f"><label for="vu">Tanggal verifikasi ulang</label><input id="vu" type="date" value="' + esc(p.tgl_verifikasi_ulang || '') + '"></div>' +
+      '<div class="f"><label for="es">Catatan / eskalasi</label><textarea id="es" rows="3">' + esc(p.catatan_eskalasi || '') + '</textarea></div>' : '') +
+    '<button class="btn" type="submit">Simpan</button></form>');
+  document.getElementById('pf').onsubmit = async function(e){
+    e.preventDefault();
+    function v(id){ var x = document.getElementById(id); return x ? (x.value.trim() || null) : undefined; }
+    var o = { no_rm: v('rm'), inisial: v('in'), ruangan: v('rg'), dpjp_id: v('dp'), kondisi: v('kd'), tgl_masuk: v('tm'), perkiraan_pulang: v('pp'), sep: v('sp') };
+    if (edit){ o.tgl_verifikasi_ulang = v('vu'); o.catatan_eskalasi = v('es'); }
+    var x = edit ? await sb.from('pasien').update(o).eq('id', S.pasienId) : await sb.from('pasien').insert(o);
+    if (x.error) return alert('Gagal menyimpan: ' + x.error.message);
+    S.view = edit ? 'detail' : 'list'; render();
+  };
+}
+
+// ---------- Detail pasien ----------
+async function viewDetail(){
+  var r = await sb.from('pasien').select('*, dpjp:profiles!pasien_dpjp_id_fkey(nama)').eq('id', S.pasienId).single();
+  var t = await sb.from('temuan').select('*, pic:profiles!temuan_pic_id_fkey(nama,wa_nomor)').eq('pasien_id', S.pasienId).order('created_at',{ascending:false});
+  var ck = await sb.from('checklist').select('*').eq('pasien_id', S.pasienId).eq('tgl_visite', S.ckTgl);
+  if (r.error) return shell(header('Pasien', '', true), '<div class="err">Gagal memuat.</div>');
+  var p = r.data, rows = t.data || [];
+  var cmap = {}; (ck.data || []).forEach(function(c){ cmap[c.no] = c; });
+  var nS = (ck.data || []).filter(function(c){ return c.status === 'sesuai'; }).length;
+  var nT = (ck.data || []).filter(function(c){ return c.status === 'tindak_lanjut'; }).length;
+
+  var form = '<div class="card"><h2 class="title">Data form (Lampiran 1)</h2>' +
+    '<p class="sub">Tanggal masuk: ' + tglD(p.tgl_masuk) + ' &middot; Perkiraan pulang: ' + tglD(p.perkiraan_pulang) + '</p>' +
+    '<p class="sub">SEP/episode: ' + esc(p.sep || '-') + ' &middot; Verifikasi ulang: ' + tglD(p.tgl_verifikasi_ulang) + '</p>' +
+    (p.catatan_eskalasi ? '<p class="sub">Catatan: ' + esc(p.catatan_eskalasi) + '</p>' : '') +
+    '<div class="row2"><button class="btn sec" data-act="ubahPasien">Ubah data</button><button class="btn sec" data-act="cetak">Cetak form</button></div></div>';
+
+  var ckHtml = '<h2 class="title">Daftar periksa (Lampiran 2)</h2>' +
+    '<div class="f"><label for="ckt">Tanggal visite</label><input id="ckt" type="date" value="' + esc(S.ckTgl) + '" data-cktgl="1"></div>' +
+    '<p class="sub">' + nS + ' sesuai &middot; ' + nT + ' perlu tindak lanjut &middot; ' + (12 - nS - nT) + ' belum diperiksa</p>' +
+    '<div class="card" style="gap:0;padding:4px 14px">' + CHECK.map(function(txt, i){
+      var no = i + 1, c = cmap[no], st = c ? c.status : '';
+      return '<div style="padding:12px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px"><p class="body"><b>' + no + '.</b> ' + esc(txt) + '</p>' +
+        '<div class="chips"><button class="chip' + (st === 'sesuai' ? ' on' : '') + '" data-ck="' + no + ':sesuai" aria-pressed="' + (st === 'sesuai') + '">Sesuai</button>' +
+        '<button class="chip' + (st === 'tindak_lanjut' ? ' on' : '') + '" style="' + (st === 'tindak_lanjut' ? 'background:var(--gold);border-color:var(--gold)' : '') + '" data-ck="' + no + ':tindak_lanjut" aria-pressed="' + (st === 'tindak_lanjut') + '">Perlu tindak lanjut</button></div>' +
+        (st === 'tindak_lanjut' ? '<input data-ckcat="' + no + '" value="' + esc(c.catatan || '') + '" placeholder="Catatan singkat" aria-label="Catatan item ' + no + '">' +
+          '<button class="btn sec sm" data-jadi="' + no + '">Jadikan temuan untuk DPJP</button>' : '') + '</div>';
+    }).join('') + '</div>';
+
+  var cards = rows.map(function(x){
+    var jaw = x.jawaban ? '<p class="sub">Jawaban: ' + esc(JAWABAN[x.jawaban]) + (x.catatan_jawaban ? ' &mdash; ' + esc(x.catatan_jawaban) : '') + '</p>' : '';
+    var aksi = x.status === 'dijawab' ? '<button class="btn sm" data-selesai="' + x.id + '">Tandai selesai</button>' : x.status === 'menunggu' ? waBtn(x.pic) : '';
+    return '<div class="card warn"><p class="sub" style="font-weight:700;color:var(--gold-t)">' + esc(x.aspek) + '</p><p class="body">' + esc(x.uraian) + '</p>' +
+      '<p class="sub">PIC: ' + esc(x.pic ? x.pic.nama : '-') + ' &middot; Target: ' + tgl(x.target) + '</p>' + jaw + '<div>' + pillTemuan(x) + '</div>' + aksi + '</div>';
+  }).join('') || '<p class="sub">Belum ada temuan.</p>';
+  var selesaiBtn = p.status === 'proses' ? '<button class="btn sec" data-act="selesaiPasien">Tandai pasien selesai</button>' : '';
+  shell(header(p.inisial + ' · RM ' + p.no_rm, p.ruangan + (p.kondisi ? ' · ' + p.kondisi : '') + (p.dpjp ? ' · DPJP ' + p.dpjp.nama : ''), true),
+    form + ckHtml + '<h2 class="title">Temuan</h2>' + cards + '<button class="btn sec" data-act="tambahTemuan">+ Tambah temuan</button>' + selesaiBtn +
+    '<p class="info">Perbaikan data klinis dilakukan DPJP di RME. Aplikasi ini hanya mencatat temuan dan jawaban.</p>');
+}
+
+function viewTambahTemuan(){
+  sb.from('pasien').select('dpjp_id').eq('id', S.pasienId).single().then(function(r){
+    var def = r.data ? r.data.dpjp_id : '';
+    var opts = S.dpjps.map(function(d){ return '<option value="' + d.id + '"' + (d.id === def ? ' selected' : '') + '>' + esc(d.nama) + '</option>'; }).join('');
+    var besok = new Date(Date.now() + 86400000); besok.setHours(16,0,0,0);
+    var val = new Date(besok.getTime() - besok.getTimezoneOffset()*60000).toISOString().slice(0,16);
+    shell(header('Tambah Temuan', 'Tulis netral, tanpa nama lengkap pasien.', true),
+      '<form id="tf" class="card"><div class="f"><label for="as">Aspek / dokumen</label><input id="as" list="asp" required value="' + esc(S.prefill ? S.prefill.aspek : '') + '"><datalist id="asp">' +
+      ['Diagnosis utama','Diagnosis sekunder','Tindakan / prosedur','Lama ventilator','Kelengkapan resume','Lainnya'].map(function(a){ return '<option value="' + a + '">'; }).join('') + '</datalist></div>' +
+      '<div class="f"><label for="ur">Temuan / pertanyaan</label><textarea id="ur" rows="4" required>' + esc(S.prefill ? S.prefill.uraian : '') + '</textarea></div>' +
+      '<div class="f"><label for="pc">Ditujukan ke (PIC)</label><select id="pc">' + opts + '</select></div>' +
+      '<div class="f"><label for="tg">Target jawaban</label><input id="tg" type="datetime-local" value="' + val + '"></div>' +
+      '<button class="btn" type="submit">Kirim klarifikasi ke DPJP</button></form>');
+    document.getElementById('tf').onsubmit = async function(e){
+      e.preventDefault();
+      var tg = document.getElementById('tg').value;
+      var x = await sb.from('temuan').insert({ pasien_id: S.pasienId, aspek: document.getElementById('as').value.trim(), uraian: document.getElementById('ur').value.trim(),
+        pic_id: document.getElementById('pc').value || null, target: tg ? new Date(tg).toISOString() : null });
+      if (x.error) return alert('Gagal menyimpan: ' + x.error.message);
+      S.prefill = null; S.view = 'detail'; render();
+    };
+  });
+}
+
+// ---------- Cetak form (Lampiran 1 + 2) ----------
+async function viewCetak(){
+  var r = await sb.from('pasien').select('*, dpjp:profiles!pasien_dpjp_id_fkey(nama)').eq('id', S.pasienId).single();
+  var t = await sb.from('temuan').select('*, pic:profiles!temuan_pic_id_fkey(nama)').eq('pasien_id', S.pasienId).order('created_at',{ascending:true});
+  var ck = await sb.from('checklist').select('*').eq('pasien_id', S.pasienId).eq('tgl_visite', S.ckTgl);
+  if (r.error) return shell(header('Cetak', '', true), '<div class="err">Gagal memuat.</div>');
+  var p = r.data, rows = t.data || [], cmap = {};
+  (ck.data || []).forEach(function(c){ cmap[c.no] = c; });
+  function stT(x){ return x.status === 'selesai' ? 'Selesai' : x.status === 'dijawab' ? 'Proses (sudah dijawab DPJP, menunggu verifikasi ulang)' : 'Belum selesai'; }
+  var kotak = function(on){ return on ? '&#9745;' : '&#9744;'; };
+  var sel = rows.length && rows.every(function(x){ return x.status === 'selesai'; });
+  var bel = rows.some(function(x){ return x.status === 'menunggu'; });
+  var tab1 = rows.length ? rows.map(function(x, i){
+    return '<tr><td>' + (i + 1) + '</td><td>' + esc(x.aspek) + '</td><td>' + esc(x.uraian) + '</td><td>' + esc(x.pic ? x.pic.nama : '-') + '</td><td>' + tgl(x.target) + '</td><td>' + stT(x) + '</td></tr>';
+  }).join('') : '<tr><td colspan="6">Tidak ada temuan.</td></tr>';
+  var tab2 = CHECK.map(function(txt, i){
+    var c = cmap[i + 1], st = c ? c.status : '';
+    return '<tr><td>' + (i + 1) + '</td><td>' + esc(txt) + '</td><td>' + kotak(st === 'sesuai') + ' Sesuai &nbsp; ' + kotak(st === 'tindak_lanjut') + ' Perlu tindak lanjut' + (c && c.catatan ? '<br>Catatan: ' + esc(c.catatan) : '') + '</td></tr>';
+  }).join('');
+  app.innerHTML = '<main class="doc"><div class="noprint" style="display:flex;gap:8px"><button class="btn sm" style="flex:1" data-act="printnow">Cetak / simpan PDF</button><button class="btn sec sm" style="flex:1" data-act="back">Kembali</button></div>' +
+    '<h2>FORM MONITORING VISITE CASEMIX DURANTE PELAYANAN</h2><p style="text-align:center;margin:0">RSUD Umar Wirahadikusumah</p>' +
+    '<div class="meta"><span>Tanggal visite: <b>' + tglD(S.ckTgl) + '</b></span><span>Ruang: <b>' + esc(p.ruangan) + '</b></span>' +
+    '<span>Petugas Casemix: <b>' + esc(S.me.nama) + '</b></span><span>Nama/inisial pasien: <b>' + esc(p.inisial) + '</b></span>' +
+    '<span>No. RM: <b>' + esc(p.no_rm) + '</b></span><span>DPJP: <b>' + esc(p.dpjp ? p.dpjp.nama : '-') + '</b></span>' +
+    '<span>Tanggal masuk: <b>' + tglD(p.tgl_masuk) + '</b></span><span>SEP/episode: <b>' + esc(p.sep || '-') + '</b></span>' +
+    '<span>Perkiraan pulang: <b>' + tglD(p.perkiraan_pulang) + '</b></span></div>' +
+    '<table><thead><tr><th>No</th><th>Aspek/dokumen</th><th>Temuan faktual/klarifikasi</th><th>PIC/unit</th><th>Target tindak lanjut</th><th>Status/hasil verifikasi</th></tr></thead><tbody>' + tab1 + '</tbody></table>' +
+    '<p>Status: ' + kotak(sel) + ' Selesai &nbsp; ' + kotak(!sel && !bel && rows.length > 0) + ' Proses &nbsp; ' + kotak(bel) + ' Belum selesai &nbsp;&nbsp; Tanggal verifikasi ulang: <b>' + tglD(p.tgl_verifikasi_ulang) + '</b></p>' +
+    '<p>Catatan/eskalasi: ' + esc(p.catatan_eskalasi || '..............................................................................') + '</p>' +
+    '<div class="ttd"><div><span>Petugas Casemix<br>' + esc(S.me.nama) + '</span></div><div><span>PIC ruangan</span></div><div><span>DPJP (bila diperlukan)</span></div></div>' +
+    '<p style="font-size:11px"><b>Catatan penggunaan:</b> Form ini mencatat temuan dan tindak lanjut, bukan pengganti rekam medis. Klarifikasi/perbaikan klinis wajib dilakukan dan diautentikasi oleh tenaga kesehatan yang berwenang.</p>' +
+    '<div class="pb"></div><h2>CHECKLIST RINGKAS VISITE CASEMIX</h2><p style="text-align:center;margin:0">' + esc(p.inisial) + ' &middot; RM ' + esc(p.no_rm) + ' &middot; ' + tglD(S.ckTgl) + '</p>' +
+    '<table><thead><tr><th>No</th><th>Item verifikasi</th><th>Status/Catatan</th></tr></thead><tbody>' + tab2 + '</tbody></table></main>';
+}
+
+// ---------- Klarifikasi ----------
+async function viewKlar(riwayat){
+  var r = await sb.from('temuan').select('*, pasien(inisial,no_rm,ruangan), pic:profiles!temuan_pic_id_fkey(nama,wa_nomor)').order('target',{ascending:true});
+  if (r.error) return shell(header('Klarifikasi'), '<div class="err">Gagal memuat.</div>', menu());
+  var isD = S.me.role === 'dpjp';
+  var rows = r.data.filter(function(t){ return riwayat ? t.status !== 'menunggu' : (isD ? t.status === 'menunggu' : t.status !== 'selesai'); });
+  var n = r.data.filter(function(t){ return t.status === 'menunggu'; }).length;
+  var cards = rows.map(function(t){
+    var btn = isD && t.status === 'menunggu' ? '<button class="btn sm" data-jawab="' + t.id + '">Buka</button>' :
+      !isD ? '<button class="btn sm" data-pasien="' + t.pasien_id + '">Lihat pasien</button>' + (t.status === 'menunggu' ? waBtn(t.pic) : '') : '';
+    return '<div class="card' + (terlambat(t) ? ' warn' : '') + '"><div style="display:flex;justify-content:space-between;gap:8px"><p class="title">' + esc(t.pasien.inisial) +
+      ' <span class="sub">&middot; RM ' + esc(t.pasien.no_rm) + '</span></p>' + pillTemuan(t) + '</div><p class="body">' + esc(t.uraian) + '</p>' +
+      '<p class="sub">' + (isD ? 'Dari Dokter Casemix' : 'Untuk ' + esc(t.pic ? t.pic.nama : '-')) + ' &middot; target ' + tgl(t.target) + '</p>' + btn + '</div>';
+  }).join('') || '<p class="sub">Tidak ada data.</p>';
+  shell(header(riwayat ? 'Riwayat' : 'Klarifikasi Masuk', S.me.nama + ' · ' + n + ' menunggu jawaban'), cards +
+    '<p class="sub">Pengingat WhatsApp tidak memuat data pasien. Detail hanya terlihat setelah penerima masuk ke aplikasi.</p>', menu());
+}
+
+async function viewJawab(){
+  var r = await sb.from('temuan').select('*, pasien(inisial,no_rm,ruangan)').eq('id', S.temuanId).single();
+  if (r.error) return shell(header('Jawab', '', true), '<div class="err">Gagal memuat.</div>');
+  var t = r.data;
+  shell(header('Jawab Klarifikasi', t.pasien.inisial + ' · RM ' + t.pasien.no_rm + ' · ' + t.pasien.ruangan, true),
+    '<div class="card warn"><p class="sub" style="font-weight:700;color:var(--gold-t)">Pertanyaan dari Dokter Casemix &middot; ' + esc(t.aspek) + '</p><p class="body">' + esc(t.uraian) + '</p></div>' +
+    '<p class="info">Perbaikan dilakukan di RME. Aplikasi hanya mencatat jawaban Anda.</p>' +
+    '<form id="jf" style="display:flex;flex-direction:column;gap:12px"><fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px"><legend style="font-size:14px;font-weight:700;margin-bottom:8px">Jawaban Anda</legend>' +
+    Object.keys(JAWABAN).map(function(k,i){ return '<label class="opt' + (i===0?' sel':'') + '"><input type="radio" name="jw" value="' + k + '"' + (i===0?' checked':'') + '>' + JAWABAN[k] + '</label>'; }).join('') +
+    '</fieldset><div class="f"><label for="ct">Catatan (opsional)</label><textarea id="ct" rows="3" placeholder="Tulis singkat, tanpa nama lengkap pasien"></textarea></div>' +
+    '<button class="btn" type="submit">Kirim jawaban</button></form>');
+  document.querySelectorAll('input[name=jw]').forEach(function(i){ i.onchange = function(){
+    document.querySelectorAll('.opt').forEach(function(o){ o.classList.toggle('sel', o.querySelector('input').checked); }); }; });
+  document.getElementById('jf').onsubmit = async function(e){
+    e.preventDefault();
+    var x = await sb.from('temuan').update({ status:'dijawab', jawaban: document.querySelector('input[name=jw]:checked').value,
+      catatan_jawaban: document.getElementById('ct').value.trim() || null, dijawab_at: new Date().toISOString() }).eq('id', S.temuanId);
+    if (x.error) return alert('Gagal mengirim: ' + x.error.message);
+    S.view = 'list'; S.tab = 'klar'; render();
+  };
+}
+
+// ---------- Rekap ----------
+async function viewRekap(){
+  var awal = new Date(); awal.setDate(1); awal.setHours(0,0,0,0);
+  var a = await sb.from('pasien').select('id',{count:'exact',head:true}).gte('created_at', awal.toISOString());
+  var b = await sb.from('temuan').select('status').gte('created_at', awal.toISOString());
+  var rows = b.data || [], tot = rows.length;
+  function c(s){ return rows.filter(function(x){ return x.status === s; }).length; }
+  function bar(l, n, col){ return '<div class="f"><div style="display:flex;justify-content:space-between;font-size:13px"><span>' + l + '</span><b>' + n + '</b></div><div class="bar"><div style="width:' + (tot ? Math.round(n/tot*100) : 0) + '%;background:' + col + '"></div></div></div>'; }
+  shell(header('Rekap Bulanan', awal.toLocaleDateString('id-ID',{month:'long',year:'numeric'})),
+    '<div class="stat"><div class="card"><p class="n">' + (a.count || 0) + '</p><p class="sub">Pasien tercatat</p></div><div class="card"><p class="n">' + tot + '</p><p class="sub">Temuan tercatat</p></div></div>' +
+    '<div class="card"><h2 class="title">Status temuan</h2>' + bar('Selesai', c('selesai'), '#0e7c6b') + bar('Sudah dijawab DPJP', c('dijawab'), '#d4a017') + bar('Menunggu DPJP', c('menunggu'), '#b91c1c') + '</div>' +
+    '<button class="btn noprint" data-act="printnow">Cetak PDF rekap</button>', menu());
+}
+
+// ---------- Akun ----------
+async function viewAkun(msg){
+  var ps = 'tidak_didukung'; try { ps = await statusPush(); } catch (e) {}
+  var notif = '<div class="card"><h2 class="title">Notifikasi di HP</h2>' +
+    (ps === 'aktif' ? '<div><span class="pill p-ok">Aktif di perangkat ini</span></div><p class="sub">Isi notifikasi tidak memuat data pasien.</p><button class="btn sec sm" data-act="pushOff">Matikan notifikasi</button>' :
+     ps === 'mati' ? '<p class="sub">Dapatkan pemberitahuan saat ada klarifikasi atau jawaban baru.</p><button class="btn sm" data-act="pushOn">Aktifkan notifikasi</button>' :
+     ps === 'diblokir' ? '<p class="sub">Notifikasi diblokir di pengaturan browser. Izinkan notifikasi untuk situs ini, lalu muat ulang halaman.</p>' :
+     '<p class="sub">Perangkat atau browser ini belum mendukung. Di iPhone, tambahkan aplikasi ke Layar Utama lebih dulu (Bagikan, lalu Tambahkan ke Layar Utama), lalu buka dari ikonnya.</p>') + '</div>';
+  shell(header('Akun', S.me.nama + ' · ' + S.email),
+    (msg ? '<div class="' + (msg.ok ? 'ok' : 'err') + '" role="status">' + esc(msg.t) + '</div>' : '') +
+    notif + '<form id="wf" class="card"><h2 class="title">Nomor WhatsApp</h2><p class="sub">Dipakai rekan casemix untuk mengirim pengingat ke Anda. Contoh: 081234567890</p>' +
+    '<div class="f"><label for="wa">Nomor WhatsApp</label><input id="wa" type="tel" inputmode="tel" value="' + esc(S.me.wa_nomor || '') + '"></div><button class="btn sm" type="submit">Simpan nomor</button></form>' +
+    '<form id="sf" class="card"><h2 class="title">Ganti kata sandi</h2><div class="f"><label for="sn">Kata sandi baru (minimal 8 karakter)</label><input id="sn" type="password" autocomplete="new-password" minlength="8" required></div>' +
+    '<button class="btn sm" type="submit">Ganti kata sandi</button></form>' +
+    (S.me.role === 'admin' ? '<button class="btn sec" data-act="pengguna">Kelola pengguna</button>' : ''), menu());
+  document.getElementById('wf').onsubmit = async function(e){
+    e.preventDefault();
+    var v = document.getElementById('wa').value.trim() || null;
+    var x = await sb.from('profiles').update({ wa_nomor: v }).eq('id', S.me.id);
+    if (x.error) return viewAkun({ t: 'Gagal menyimpan: ' + x.error.message });
+    S.me.wa_nomor = v; viewAkun({ ok: true, t: 'Nomor tersimpan.' });
+  };
+  document.getElementById('sf').onsubmit = async function(e){
+    e.preventDefault();
+    var x = await sb.auth.updateUser({ password: document.getElementById('sn').value });
+    viewAkun(x.error ? { t: 'Gagal: ' + x.error.message } : { ok: true, t: 'Kata sandi diganti.' });
+  };
+}
+
+async function viewPengguna(msg){
+  var a = await sb.rpc('daftar_akun');
+  var p = await sb.from('profiles').select('*').order('nama');
+  if (a.error || p.error) return shell(header('Kelola Pengguna', '', true), '<div class="err">Gagal memuat. Pastikan tambah_fitur.sql sudah dijalankan dan akun Anda berperan admin.</div>');
+  var email = {}; (a.data || []).forEach(function(x){ email[x.id] = x.email; });
+  var ada = {}; (p.data || []).forEach(function(x){ ada[x.id] = 1; });
+  var baru = (a.data || []).filter(function(x){ return !ada[x.id]; });
+  var roleOpt = function(sel){ return Object.keys(ROLE).map(function(k){ return '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' + ROLE[k] + '</option>'; }).join(''); };
+  var kartuBaru = baru.map(function(x){
+    return '<div class="card" data-baru="' + x.id + '"><p class="title">' + esc(x.email) + '</p><p class="sub">Belum diberi peran</p>' +
+      '<div class="f"><label>Nama tampil<input data-f="nama" placeholder="contoh: dr. B"></label></div>' +
+      '<div class="f"><label>Peran<select data-f="role">' + roleOpt('dpjp') + '</select></label></div>' +
+      '<div class="f"><label>Nomor WhatsApp (opsional)<input data-f="wa" type="tel"></label></div>' +
+      '<button class="btn sm" data-daftar="' + x.id + '">Daftarkan</button></div>';
+  }).join('') || '<p class="sub">Tidak ada akun baru. Buat akun login di Supabase (Authentication &gt; Users) terlebih dulu.</p>';
+  var kartuAda = (p.data || []).map(function(x){
+    var diri = x.id === S.me.id;
+    return '<div class="card"><div style="display:flex;justify-content:space-between;gap:8px"><p class="title">' + esc(x.nama) + '</p>' + (x.aktif ? '<span class="pill p-ok">Aktif</span>' : '<span class="pill p-late">Nonaktif</span>') + '</div>' +
+      '<p class="sub">' + esc(email[x.id] || '') + '</p>' +
+      '<div class="f"><label>Peran<select data-roleid="' + x.id + '"' + (diri ? ' disabled' : '') + '>' + roleOpt(x.role) + '</select></label></div>' +
+      (diri ? '<p class="sub">Akun Anda sendiri tidak bisa diubah di sini.</p>' : '<button class="btn sec sm" data-aktif="' + x.id + ':' + (x.aktif ? 'false' : 'true') + '">' + (x.aktif ? 'Nonaktifkan' : 'Aktifkan kembali') + '</button>') + '</div>';
+  }).join('');
+  shell(header('Kelola Pengguna', 'Hanya admin', true),
+    (msg ? '<div class="' + (msg.ok ? 'ok' : 'err') + '" role="status">' + esc(msg.t) + '</div>' : '') +
+    '<h2 class="title">Akun menunggu peran</h2>' + kartuBaru + '<h2 class="title">Pengguna terdaftar</h2>' + kartuAda);
+}
+
+// ---------- Klik dan perubahan ----------
+document.addEventListener('click', async function(e){
+  var el = e.target.closest('[data-tab],[data-filter],[data-pasien],[data-jawab],[data-selesai],[data-act],[data-ck],[data-jadi],[data-daftar],[data-aktif]');
+  if (!el) return;
+  var d = el.dataset;
+  if (d.ck){
+    var pr = d.ck.split(':'), y = window.scrollY;
+    var x = await sb.from('checklist').upsert({ pasien_id: S.pasienId, no: +pr[0], status: pr[1], tgl_visite: S.ckTgl }, { onConflict: 'pasien_id,no,tgl_visite' });
+    if (x.error) return alert('Gagal menyimpan: ' + x.error.message);
+    await render(); window.scrollTo(0, y); return;
+  }
+  if (d.jadi){
+    var no = +d.jadi, cat = (document.querySelector('[data-ckcat="' + no + '"]') || {}).value || '';
+    S.prefill = { aspek: 'Checklist no. ' + no, uraian: CHECK[no - 1] + (cat ? ' - ' + cat : '') };
+    S.view = 'tambahTemuan'; return render();
+  }
+  if (d.daftar){
+    var card = el.closest('[data-baru]');
+    var nama = card.querySelector('[data-f=nama]').value.trim();
+    if (!nama) return alert('Isi nama tampil dulu.');
+    var xi = await sb.from('profiles').insert({ id: d.daftar, nama: nama, role: card.querySelector('[data-f=role]').value, wa_nomor: card.querySelector('[data-f=wa]').value.trim() || null });
+    if (xi.error) return alert('Gagal: ' + xi.error.message);
+    await muatDpjp(); return viewPengguna({ ok: true, t: 'Pengguna didaftarkan.' });
+  }
+  if (d.aktif){
+    var q = d.aktif.split(':');
+    var xa = await sb.from('profiles').update({ aktif: q[1] === 'true' }).eq('id', q[0]);
+    if (xa.error) return alert('Gagal: ' + xa.error.message);
+    await muatDpjp(); return viewPengguna();
+  }
+  if (d.tab){ S.tab = d.tab; S.view = 'list'; return render(); }
+  if (d.filter){ S.filter = d.filter; return render(); }
+  if (d.pasien){ S.pasienId = d.pasien; S.view = 'detail'; return render(); }
+  if (d.jawab){ S.temuanId = d.jawab; S.view = 'jawab'; return render(); }
+  if (d.selesai){ await sb.from('temuan').update({ status:'selesai' }).eq('id', d.selesai); return render(); }
+  var a = d.act;
+  if (a === 'back'){
+    if (S.view === 'tambahTemuan') S.prefill = null;
+    S.view = (S.view === 'tambahTemuan' || S.view === 'cetak' || S.view === 'ubahPasien') ? 'detail' : 'list';
+    if (S.view === 'list' && el.closest('header') && S.tab === 'akun') S.tab = 'akun';
+    return render();
+  }
+  if (a === 'tambahPasien'){ S.view = 'tambahPasien'; return render(); }
+  if (a === 'ubahPasien'){ S.view = 'ubahPasien'; return render(); }
+  if (a === 'tambahTemuan'){ S.view = 'tambahTemuan'; return render(); }
+  if (a === 'cetak'){ S.view = 'cetak'; return render(); }
+  if (a === 'pengguna'){ S.view = 'pengguna'; return render(); }
+  if (a === 'printnow'){ return window.print(); }
+  if (a === 'pushOn'){ var m = await aktifkanPush(); return viewAkun(m ? { t: m } : { ok: true, t: 'Notifikasi diaktifkan di perangkat ini.' }); }
+  if (a === 'pushOff'){ await matikanPush(); return viewAkun({ ok: true, t: 'Notifikasi dimatikan.' }); }
+  if (a === 'selesaiPasien'){ await sb.from('pasien').update({ status:'selesai' }).eq('id', S.pasienId); S.view = 'list'; return render(); }
+  if (a === 'keluar'){ await lepasPushLokal(); await sb.auth.signOut(); S.me = null; return showLogin(); }
+});
+
+document.addEventListener('change', async function(e){
+  var t = e.target;
+  if (t.dataset && t.dataset.ckcat){
+    var x = await sb.from('checklist').update({ catatan: t.value.trim() || null }).eq('pasien_id', S.pasienId).eq('no', +t.dataset.ckcat).eq('tgl_visite', S.ckTgl);
+    if (x.error) alert('Gagal menyimpan catatan: ' + x.error.message);
+  } else if (t.dataset && t.dataset.cktgl){
+    if (t.value){ S.ckTgl = t.value; render(); }
+  } else if (t.dataset && t.dataset.roleid){
+    var y = await sb.from('profiles').update({ role: t.value }).eq('id', t.dataset.roleid);
+    if (y.error) alert('Gagal: ' + y.error.message);
+    await muatDpjp();
+  }
+});
+
+start();
+</script>
+</body>
+</html>
