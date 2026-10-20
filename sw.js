@@ -6,7 +6,7 @@ self.addEventListener('push', function(e){
   try { d = e.data ? e.data.json() : {}; } catch (_) {}
   e.waitUntil(self.registration.showNotification(d.judul || 'Visite Casemix', {
     body: d.isi || 'Ada pembaruan. Buka aplikasi untuk melihat.',
-    icon: 'icon-192.png', badge: 'icon-192.png', tag: 'visite-casemix'
+    icon: 'icon-192.png', badge: 'icon-192.png', tag: 'visite-casemix', renotify: true, vibrate: [200, 100, 200]
   }));
 });
 self.addEventListener('notificationclick', function(e){
