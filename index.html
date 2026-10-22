@@ -64,6 +64,11 @@ input,select,textarea{width:100%;border:1px solid #8a99ab;border-radius:12px;pad
 .loginform h2{margin:0;font-size:20px}
 .foot{font-size:13px;color:var(--muted);text-align:center;margin:20px 28px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+details.lap{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+details.lap summary{cursor:pointer;font-size:14px;line-height:1.5}
+details.lap .lapd{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}.tbl th,.tbl td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.tbl th{color:var(--muted);font-weight:600}
+.printonly{display:none}
 /* dokumen cetak */
 .doc{background:#fff;color:#000;font-size:13px;line-height:1.4;gap:10px}
 .doc h2{margin:0;font-size:15px;text-align:center}
@@ -75,6 +80,8 @@ input,select,textarea{width:100%;border:1px solid #8a99ab;border-radius:12px;pad
 .doc .ttd span{display:block;border-top:1px solid #000;padding-top:4px}
 .pb{page-break-before:always}
 @media print{
+  .printonly{display:block}
+  details.lap{break-inside:avoid}
   body{background:#fff}#app{max-width:none;background:#fff}
   header.top,nav.bottom,.noprint{display:none!important}
   main{padding:0}main.doc{padding:0}
@@ -109,7 +116,7 @@ var CHECK = [
 ];
 var JAWABAN = { sudah_diperbaiki:'Sudah diperbaiki di RME', tidak_sesuai:'Tidak sesuai, dijelaskan', diskusi_langsung:'Perlu diskusi langsung' };
 var VAPID_PUBLIC = 'BGN6ERcWhp62dGrR8lym20RiPL5yFAPGhPp1P7ZkGScQMf2ksTq0QdF3MWWlH6sgFgXu_Uam1xhEOBsbDUCZjqc';
-var ROLE = { admin:'Admin', casemix:'Dokter Casemix', dpjp:'DPJP' };
+var ROLE = { admin:'Admin', kepala:'Kepala Casemix', casemix:'Dokter Casemix', dpjp:'DPJP' };
 
 function hariIni(){ var d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -186,7 +193,7 @@ function nav(items){
 }
 function menu(){
   return S.me.role === 'dpjp' ? nav([['klar','Klarifikasi'],['riwayat','Riwayat'],['akun','Akun']])
-    : nav([['pasien','Pasien'],['klar','Klarifikasi'],['rekap','Rekap'],['akun','Akun']]);
+    : nav([['pasien','Pasien'],['klar','Klarifikasi'],['rekap','Laporan'],['akun','Akun']]);
 }
 function shell(head, inner, navHtml){ app.innerHTML = head + '<main>' + inner + '</main>' + (navHtml || ''); }
 
@@ -261,7 +268,7 @@ async function render(){
   if (S.tab === 'akun') return viewAkun();
   if (S.me.role === 'dpjp') return viewKlar(S.tab === 'riwayat');
   if (S.tab === 'klar') return viewKlar(false);
-  if (S.tab === 'rekap') return viewRekap();
+  if (S.tab === 'rekap') return viewLaporan();
   return viewPasien();
 }
 
@@ -321,23 +328,10 @@ async function viewFormPasien(edit){
 }
 
 // ---------- Detail pasien ----------
-async function viewDetail(){
-  var r = await sb.from('pasien').select('*, dpjp:profiles!pasien_dpjp_id_fkey(nama)').eq('id', S.pasienId).single();
-  var t = await sb.from('temuan').select('*, pic:profiles!temuan_pic_id_fkey(nama,wa_nomor)').eq('pasien_id', S.pasienId).order('created_at',{ascending:false});
-  var ck = await sb.from('checklist').select('*').eq('pasien_id', S.pasienId).eq('tgl_visite', S.ckTgl);
-  if (r.error) return shell(header('Pasien', '', true), '<div class="err">Gagal memuat.</div>');
-  var p = r.data, rows = t.data || [];
-  var cmap = {}; (ck.data || []).forEach(function(c){ cmap[c.no] = c; });
-  var nS = (ck.data || []).filter(function(c){ return c.status === 'sesuai'; }).length;
-  var nT = (ck.data || []).filter(function(c){ return c.status === 'tindak_lanjut'; }).length;
-
-  var form = '<div class="card"><h2 class="title">Data form (Lampiran 1)</h2>' +
-    '<p class="sub">Tanggal masuk: ' + tglD(p.tgl_masuk) + ' &middot; Perkiraan pulang: ' + tglD(p.perkiraan_pulang) + '</p>' +
-    '<p class="sub">SEP/episode: ' + esc(p.sep || '-') + ' &middot; Verifikasi ulang: ' + tglD(p.tgl_verifikasi_ulang) + '</p>' +
-    (p.catatan_eskalasi ? '<p class="sub">Catatan: ' + esc(p.catatan_eskalasi) + '</p>' : '') +
-    '<div class="row2"><button class="btn sec" data-act="ubahPasien">Ubah data</button><button class="btn sec" data-act="cetak">Cetak form</button></div></div>';
-
-  var ckHtml = '<h2 class="title">Daftar periksa (Lampiran 2)</h2>' +
+function ckBlock(){
+  var cmap = S.ck || {}, nS = 0, nT = 0;
+  Object.keys(cmap).forEach(function(k){ if (cmap[k].status === 'sesuai') nS++; else if (cmap[k].status === 'tindak_lanjut') nT++; });
+  return '<h2 class="title">Daftar periksa (Lampiran 2)</h2>' +
     '<div class="f"><label for="ckt">Tanggal visite</label><input id="ckt" type="date" value="' + esc(S.ckTgl) + '" data-cktgl="1"></div>' +
     '<p class="sub">' + nS + ' sesuai &middot; ' + nT + ' perlu tindak lanjut &middot; ' + (12 - nS - nT) + ' belum diperiksa</p>' +
     '<div class="card" style="gap:0;padding:4px 14px">' + CHECK.map(function(txt, i){
@@ -348,6 +342,23 @@ async function viewDetail(){
         (st === 'tindak_lanjut' ? '<input data-ckcat="' + no + '" value="' + esc(c.catatan || '') + '" placeholder="Catatan singkat" aria-label="Catatan item ' + no + '">' +
           '<button class="btn sec sm" data-jadi="' + no + '">Jadikan temuan untuk DPJP</button>' : '') + '</div>';
     }).join('') + '</div>';
+}
+
+async function viewDetail(){
+  var r = await sb.from('pasien').select('*, dpjp:profiles!pasien_dpjp_id_fkey(nama)').eq('id', S.pasienId).single();
+  var t = await sb.from('temuan').select('*, pic:profiles!temuan_pic_id_fkey(nama,wa_nomor)').eq('pasien_id', S.pasienId).order('created_at',{ascending:false});
+  var ck = await sb.from('checklist').select('*').eq('pasien_id', S.pasienId).eq('tgl_visite', S.ckTgl);
+  if (r.error) return shell(header('Pasien', '', true), '<div class="err">Gagal memuat.</div>');
+  var p = r.data, rows = t.data || [];
+  S.ck = {}; (ck.data || []).forEach(function(c){ S.ck[c.no] = c; });
+
+  var form = '<div class="card"><h2 class="title">Data form (Lampiran 1)</h2>' +
+    '<p class="sub">Tanggal masuk: ' + tglD(p.tgl_masuk) + ' &middot; Perkiraan pulang: ' + tglD(p.perkiraan_pulang) + '</p>' +
+    '<p class="sub">SEP/episode: ' + esc(p.sep || '-') + ' &middot; Verifikasi ulang: ' + tglD(p.tgl_verifikasi_ulang) + '</p>' +
+    (p.catatan_eskalasi ? '<p class="sub">Catatan: ' + esc(p.catatan_eskalasi) + '</p>' : '') +
+    '<div class="row2"><button class="btn sec" data-act="ubahPasien">Ubah data</button><button class="btn sec" data-act="cetak">Cetak form</button></div></div>';
+
+  var ckHtml = '<div id="ckwrap">' + ckBlock() + '</div>';
 
   var cards = rows.map(function(x){
     var jaw = x.jawaban ? '<p class="sub">Jawaban: ' + esc(JAWABAN[x.jawaban]) + (x.catatan_jawaban ? ' &mdash; ' + esc(x.catatan_jawaban) : '') + '</p>' : '';
@@ -460,19 +471,139 @@ async function viewJawab(){
   };
 }
 
-// ---------- Rekap ----------
-async function viewRekap(){
-  var awal = new Date(); awal.setDate(1); awal.setHours(0,0,0,0);
-  var a = await sb.from('pasien').select('id',{count:'exact',head:true}).gte('created_at', awal.toISOString());
-  var b = await sb.from('temuan').select('status').gte('created_at', awal.toISOString());
-  var rows = b.data || [], tot = rows.length;
-  function c(s){ return rows.filter(function(x){ return x.status === s; }).length; }
-  function bar(l, n, col){ return '<div class="f"><div style="display:flex;justify-content:space-between;font-size:13px"><span>' + l + '</span><b>' + n + '</b></div><div class="bar"><div style="width:' + (tot ? Math.round(n/tot*100) : 0) + '%;background:' + col + '"></div></div></div>'; }
-  shell(header('Rekap Bulanan', awal.toLocaleDateString('id-ID',{month:'long',year:'numeric'})),
-    '<div class="stat"><div class="card"><p class="n">' + (a.count || 0) + '</p><p class="sub">Pasien tercatat</p></div><div class="card"><p class="n">' + tot + '</p><p class="sub">Temuan tercatat</p></div></div>' +
-    '<div class="card"><h2 class="title">Status temuan</h2>' + bar('Selesai', c('selesai'), '#0e7c6b') + bar('Sudah dijawab DPJP', c('dijawab'), '#d4a017') + bar('Menunggu DPJP', c('menunggu'), '#b91c1c') + '</div>' +
-    '<button class="btn noprint" data-act="printnow">Cetak PDF rekap</button>', menu());
+// ---------- Laporan ----------
+S.lap = { dari: '', sampai: '', petugas: '', ruangan: '', status: '', q: '', data: [], rows: [] };
+function tglStr(d){ return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
+function aturPreset(v){
+  var n = new Date(), L = S.lap;
+  if (v === 'bulanini'){ L.dari = tglStr(new Date(n.getFullYear(), n.getMonth(), 1)); L.sampai = tglStr(n); }
+  else if (v === 'bulanlalu'){ L.dari = tglStr(new Date(n.getFullYear(), n.getMonth() - 1, 1)); L.sampai = tglStr(new Date(n.getFullYear(), n.getMonth(), 0)); }
+  else if (v === '7' || v === '30'){ L.dari = tglStr(new Date(n.getTime() - (+v - 1) * 86400000)); L.sampai = tglStr(n); }
 }
+function fjam(h){ if (h == null || isNaN(h)) return '-'; return h < 1 ? Math.round(h * 60) + ' mnt' : h.toFixed(1).replace('.', ',') + ' jam'; }
+function pct(a, b){ return b ? Math.round(a / b * 100) + '%' : '-'; }
+function ckTerakhir(p){
+  var cl = p.checklist || []; if (!cl.length) return { tgl: null, sesuai: 0, tl: [], n: 0 };
+  var last = cl[cl.length - 1].tgl, it = cl.filter(function(c){ return c.tgl === last; });
+  return { tgl: last, sesuai: it.filter(function(c){ return c.status === 'sesuai'; }).length,
+    tl: it.filter(function(c){ return c.status === 'tindak_lanjut'; }).map(function(c){ return c.no; }), n: it.length };
+}
+function temuanTerlambat(t){
+  var tg = t.target ? new Date(t.target).getTime() : null; if (!tg) return false;
+  if (t.status === 'menunggu') return tg < Date.now();
+  return t.dijawab ? new Date(t.dijawab).getTime() > tg : false;
+}
+function hitungLaporan(rows){
+  var o = { pasien: rows.length, temuan: 0, selesai: 0, dijawab: 0, menunggu: 0, terlambat: 0, rs: 0, rn: 0, cs: 0, cn: 0, ruang: {}, dpjp: {}, petugas: {} };
+  rows.forEach(function(p){
+    var rg = o.ruang[p.ruangan] = o.ruang[p.ruangan] || { pasien: 0, temuan: 0, selesai: 0 }; rg.pasien++;
+    var pn = p.petugas || '-', pp = o.petugas[pn] = o.petugas[pn] || { pasien: 0, temuan: 0, selesai: 0 }; pp.pasien++;
+    (p.temuan || []).forEach(function(t){
+      o.temuan++; rg.temuan++; pp.temuan++;
+      if (t.status === 'selesai'){ o.selesai++; rg.selesai++; pp.selesai++; } else if (t.status === 'dijawab') o.dijawab++; else o.menunggu++;
+      var late = temuanTerlambat(t); if (late) o.terlambat++;
+      var dn = t.pic || '-', dp = o.dpjp[dn] = o.dpjp[dn] || { temuan: 0, dijawab: 0, rs: 0, rn: 0, terlambat: 0 };
+      dp.temuan++; if (late) dp.terlambat++;
+      if (t.dijawab){ dp.dijawab++; var h = (new Date(t.dijawab) - new Date(t.dibuat)) / 3600000; if (h >= 0){ o.rs += h; o.rn++; dp.rs += h; dp.rn++; } }
+    });
+    var c = ckTerakhir(p); o.cs += c.sesuai; o.cn += c.n;
+  });
+  return o;
+}
+function labelTemuan(s){ return s === 'selesai' ? 'Selesai' : s === 'dijawab' ? 'Sudah dijawab' : 'Menunggu DPJP'; }
+function detailPasien(p){
+  var c = ckTerakhir(p), n = (p.temuan || []).length;
+  var pill = p.status === 'selesai' ? '<span class="pill p-ok">Selesai</span>' : '<span class="pill p-info">Proses</span>';
+  var tem = (p.temuan || []).map(function(t, i){
+    return '<div class="card' + (temuanTerlambat(t) ? ' warn' : '') + '" style="margin-top:8px"><p class="sub"><b>' + (i + 1) + '. ' + esc(t.aspek) + '</b> &middot; ' + labelTemuan(t.status) + (temuanTerlambat(t) ? ' &middot; terlambat' : '') + '</p>' +
+      '<p class="body">' + esc(t.uraian) + '</p>' +
+      '<p class="sub">PIC: ' + esc(t.pic || '-') + ' &middot; Target: ' + tgl(t.target) + ' &middot; Dicatat: ' + tgl(t.dibuat) + ' oleh ' + esc(t.petugas || '-') + '</p>' +
+      (t.jawaban ? '<p class="sub">Jawaban: ' + esc(JAWABAN[t.jawaban] || t.jawaban) + (t.catatan_jawaban ? ' &mdash; ' + esc(t.catatan_jawaban) : '') + ' (' + tgl(t.dijawab) + ', respons ' + fjam((new Date(t.dijawab) - new Date(t.dibuat)) / 3600000) + ')</p>' : '') + '</div>';
+  }).join('') || '<p class="sub">Tidak ada temuan.</p>';
+  return '<details class="lap"><summary><b>' + esc(p.inisial) + '</b> &middot; RM ' + esc(p.no_rm) + ' &middot; ' + esc(p.ruangan) + ' ' + pill + ' <span class="sub">' + n + ' temuan</span></summary>' +
+    '<div class="lapd"><p class="sub">Petugas: ' + esc(p.petugas || '-') + ' &middot; DPJP: ' + esc(p.dpjp || '-') + ' &middot; Dicatat: ' + tgl(p.created_at) + '</p>' +
+    '<p class="sub">Kondisi: ' + esc(p.kondisi || '-') + '</p>' +
+    '<p class="sub">Tanggal masuk: ' + tglD(p.tgl_masuk) + ' &middot; Perkiraan pulang: ' + tglD(p.perkiraan_pulang) + ' &middot; Verifikasi ulang: ' + tglD(p.tgl_verifikasi_ulang) + '</p>' +
+    (p.catatan_eskalasi ? '<p class="sub">Catatan/eskalasi: ' + esc(p.catatan_eskalasi) + '</p>' : '') +
+    '<p class="sub">Checklist' + (c.tgl ? ' (' + tglD(c.tgl) + ')' : '') + ': ' + (c.n ? c.sesuai + ' dari ' + c.n + ' item sesuai' + (c.tl.length ? '; perlu tindak lanjut: no. ' + c.tl.join(', ') : '') : 'belum diperiksa') + '</p>' +
+    tem + '</div></details>';
+}
+async function viewLaporan(){
+  var L = S.lap, semua = S.me.role === 'admin' || S.me.role === 'kepala';
+  if (!L.dari) aturPreset('bulanini');
+  var petOpt = '';
+  if (semua){
+    var pr = await sb.from('profiles').select('id,nama,role').in('role', ['admin','kepala','casemix']).order('nama');
+    petOpt = '<option value="">Semua petugas</option>' + (pr.data || []).map(function(x){ return '<option value="' + x.id + '"' + (x.id === L.petugas ? ' selected' : '') + '>' + esc(x.nama) + '</option>'; }).join('');
+  }
+  shell(header('Laporan', semua ? 'Seluruh petugas' : 'Data yang Anda input'),
+    '<div class="card noprint"><div class="f"><label for="lp">Periode</label><select id="lp" data-lap="preset"><option value="bulanini">Bulan ini</option><option value="bulanlalu">Bulan lalu</option><option value="7">7 hari terakhir</option><option value="30">30 hari terakhir</option><option value="kustom">Pilih tanggal sendiri</option></select></div>' +
+    '<div class="row2"><div class="f"><label for="ld">Dari</label><input id="ld" type="date" data-lap="dari" value="' + esc(L.dari) + '"></div><div class="f"><label for="ls">Sampai</label><input id="ls" type="date" data-lap="sampai" value="' + esc(L.sampai) + '"></div></div>' +
+    (semua ? '<div class="f"><label for="lt">Petugas</label><select id="lt" data-lap="petugas">' + petOpt + '</select></div>' : '') + '</div>' +
+    '<div id="lapbody"><p class="sub">Memuat...</p></div>', menu());
+  isiLaporan();
+}
+async function isiLaporan(){
+  var L = S.lap, semua = S.me.role === 'admin' || S.me.role === 'kepala', box = document.getElementById('lapbody');
+  if (!box) return;
+  box.innerHTML = '<p class="sub">Memuat...</p>';
+  var r = await sb.rpc('laporan_rinci', { p_dari: L.dari, p_sampai: L.sampai, p_petugas: semua && L.petugas ? L.petugas : null });
+  box = document.getElementById('lapbody'); if (!box) return;
+  if (r.error){ box.innerHTML = '<div class="err">Gagal memuat laporan: ' + esc(r.error.message) + '. Pastikan tambah_laporan.sql sudah dijalankan.</div>'; return; }
+  L.data = r.data || []; L.ruangan = ''; L.status = ''; L.q = '';
+  var rg = {}; L.data.forEach(function(p){ rg[p.ruangan] = 1; });
+  var ro = Object.keys(rg).sort().map(function(x){ return '<option>' + esc(x) + '</option>'; }).join('');
+  box.innerHTML = '<div class="card noprint"><div class="row2"><div class="f"><label for="lr">Ruangan</label><select id="lr" data-lapf="ruangan"><option value="">Semua</option>' + ro + '</select></div>' +
+    '<div class="f"><label for="lst">Status pasien</label><select id="lst" data-lapf="status"><option value="">Semua</option><option value="proses">Proses</option><option value="selesai">Selesai</option></select></div></div>' +
+    '<div class="f"><label for="lq">Cari No. RM atau inisial</label><input id="lq" data-lapf="q" placeholder="contoh: 000123"></div></div><div id="lapisi"></div>';
+  gambarHasil();
+}
+function gambarHasil(){
+  var L = S.lap, el = document.getElementById('lapisi'); if (!el) return;
+  var q = L.q.toLowerCase();
+  var rows = L.data.filter(function(p){
+    return (!L.ruangan || p.ruangan === L.ruangan) && (!L.status || p.status === L.status) &&
+      (!q || String(p.no_rm).toLowerCase().indexOf(q) !== -1 || String(p.inisial).toLowerCase().indexOf(q) !== -1);
+  });
+  L.rows = rows;
+  var o = hitungLaporan(rows), semua = S.me.role === 'admin' || S.me.role === 'kepala';
+  function bar(l, n, col){ return '<div class="f"><div style="display:flex;justify-content:space-between;font-size:13px"><span>' + l + '</span><b>' + n + '</b></div><div class="bar"><div style="width:' + (o.temuan ? Math.round(n / o.temuan * 100) : 0) + '%;background:' + col + '"></div></div></div>'; }
+  function tabel(judul, kepala, baris){ return baris.length ? '<div class="card"><h2 class="title">' + judul + '</h2><div style="overflow-x:auto"><table class="tbl"><thead><tr>' + kepala.map(function(k){ return '<th>' + k + '</th>'; }).join('') + '</tr></thead><tbody>' + baris.join('') + '</tbody></table></div></div>' : ''; }
+  var tr = function(c){ return '<tr>' + c.map(function(x){ return '<td>' + x + '</td>'; }).join('') + '</tr>'; };
+  var tRuang = tabel('Per ruangan', ['Ruangan','Pasien','Temuan','Selesai'], Object.keys(o.ruang).sort().map(function(k){ var v = o.ruang[k]; return tr([esc(k), v.pasien, v.temuan, pct(v.selesai, v.temuan)]); }));
+  var tDpjp = tabel('Per DPJP', ['DPJP','Temuan','Dijawab','Rata-rata respons','Terlambat'], Object.keys(o.dpjp).sort().map(function(k){ var v = o.dpjp[k]; return tr([esc(k), v.temuan, v.dijawab, fjam(v.rn ? v.rs / v.rn : null), v.terlambat]); }));
+  var tPet = semua ? tabel('Per petugas casemix', ['Petugas','Pasien','Temuan','Selesai'], Object.keys(o.petugas).sort().map(function(k){ var v = o.petugas[k]; return tr([esc(k), v.pasien, v.temuan, pct(v.selesai, v.temuan)]); })) : '';
+  var sel = document.getElementById('lt'), nmP = (semua && L.petugas && sel) ? sel.options[sel.selectedIndex].text : (semua ? 'Semua petugas' : S.me.nama);
+  el.innerHTML = '<div class="printonly"><h2 style="margin:0">LAPORAN VISITE CASEMIX DURANTE PELAYANAN</h2><p class="sub">RSUD Umar Wirahadikusumah &middot; Periode ' + tglD(L.dari) + ' s/d ' + tglD(L.sampai) + ' &middot; Petugas: ' + esc(nmP) + ' &middot; Dicetak ' + tgl(new Date().toISOString()) + ' oleh ' + esc(S.me.nama) + '</p></div>' +
+    '<div class="stat"><div class="card"><p class="n">' + o.pasien + '</p><p class="sub">Pasien dicatat</p></div><div class="card"><p class="n">' + o.temuan + '</p><p class="sub">Temuan</p></div>' +
+    '<div class="card"><p class="n">' + pct(o.selesai, o.temuan) + '</p><p class="sub">Temuan selesai</p></div><div class="card"><p class="n">' + o.terlambat + '</p><p class="sub">Terlambat dijawab</p></div>' +
+    '<div class="card"><p class="n">' + fjam(o.rn ? o.rs / o.rn : null) + '</p><p class="sub">Rata-rata respons DPJP</p></div><div class="card"><p class="n">' + pct(o.cs, o.cn) + '</p><p class="sub">Checklist sesuai</p></div></div>' +
+    '<div class="card"><h2 class="title">Status temuan</h2>' + bar('Selesai', o.selesai, '#0e7c6b') + bar('Sudah dijawab DPJP', o.dijawab, '#d4a017') + bar('Menunggu DPJP', o.menunggu, '#b91c1c') + '</div>' +
+    tRuang + tDpjp + tPet +
+    '<h2 class="title">Rincian pasien (' + rows.length + ')</h2>' + (rows.map(detailPasien).join('') || '<p class="sub">Tidak ada data pada periode ini.</p>') +
+    '<div class="row2 noprint"><button class="btn" data-act="printnow">Cetak / simpan PDF</button><button class="btn sec" data-act="lapcsv">Unduh CSV (Excel)</button></div>' +
+    '<p class="sub">Laporan memuat inisial dan No. RM saja. Nama lengkap pasien tidak disimpan di aplikasi.' + (semua ? '' : ' Hanya data yang Anda input yang ditampilkan.') + '</p>';
+}
+function unduhCsv(){
+  var rows = S.lap.rows, out = [['Tanggal dicatat','Petugas pasien','No. RM','Inisial','Ruangan','DPJP','Kondisi','Tanggal masuk','Perkiraan pulang','Status pasien','Checklist sesuai','Checklist diperiksa','Aspek','Temuan','PIC','Target','Status temuan','Terlambat','Jawaban DPJP','Catatan jawaban','Dijawab pada','Respons (jam)','Petugas temuan']];
+  rows.forEach(function(p){
+    var c = ckTerakhir(p), dasar = [tgl(p.created_at), p.petugas || '', '="' + p.no_rm + '"', p.inisial, p.ruangan, p.dpjp || '', p.kondisi || '', p.tgl_masuk || '', p.perkiraan_pulang || '', p.status, c.sesuai, c.n];
+    var tt = p.temuan || [];
+    if (!tt.length) out.push(dasar.concat(['','','','','','','','','','','']));
+    tt.forEach(function(t){
+      out.push(dasar.concat([t.aspek, t.uraian, t.pic || '', t.target ? tgl(t.target) : '', labelTemuan(t.status), temuanTerlambat(t) ? 'ya' : 'tidak',
+        t.jawaban ? (JAWABAN[t.jawaban] || t.jawaban) : '', t.catatan_jawaban || '', t.dijawab ? tgl(t.dijawab) : '',
+        t.dijawab ? ((new Date(t.dijawab) - new Date(t.dibuat)) / 3600000).toFixed(1) : '', t.petugas || '']));
+    });
+  });
+  var csv = '﻿' + out.map(function(r){ return r.map(function(v){ return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'laporan-visite-casemix-' + S.lap.dari + '_' + S.lap.sampai + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+window.addEventListener('beforeprint', function(){ document.querySelectorAll('details.lap').forEach(function(d){ d.dataset.was = d.open ? '1' : '0'; d.open = true; }); });
+window.addEventListener('afterprint', function(){ document.querySelectorAll('details.lap').forEach(function(d){ d.open = d.dataset.was === '1'; }); });
 
 // ---------- Akun ----------
 async function viewAkun(msg){
@@ -536,10 +667,16 @@ document.addEventListener('click', async function(e){
   if (!el) return;
   var d = el.dataset;
   if (d.ck){
-    var pr = d.ck.split(':'), y = window.scrollY;
-    var x = await sb.from('checklist').upsert({ pasien_id: S.pasienId, no: +pr[0], status: pr[1], tgl_visite: S.ckTgl }, { onConflict: 'pasien_id,no,tgl_visite' });
-    if (x.error) return alert('Gagal menyimpan: ' + x.error.message);
-    await render(); window.scrollTo(0, y); return;
+    var pr = d.ck.split(':'), no = +pr[0], st = pr[1], sebelum = S.ck[no], tglIni = S.ckTgl, pid = S.pasienId;
+    var kini = { no: no, status: st, catatan: sebelum && st === 'tindak_lanjut' ? sebelum.catatan : (sebelum && sebelum.catatan) || null };
+    S.ck[no] = kini;
+    var wrap = document.getElementById('ckwrap'); if (wrap) wrap.innerHTML = ckBlock();
+    var x = await sb.from('checklist').upsert({ pasien_id: pid, no: no, status: st, tgl_visite: tglIni }, { onConflict: 'pasien_id,no,tgl_visite' });
+    if (x.error){
+      if (S.pasienId === pid && S.ckTgl === tglIni){ if (sebelum) S.ck[no] = sebelum; else delete S.ck[no]; var w2 = document.getElementById('ckwrap'); if (w2) w2.innerHTML = ckBlock(); }
+      alert('Gagal menyimpan: ' + x.error.message);
+    }
+    return;
   }
   if (d.jadi){
     var no = +d.jadi, cat = (document.querySelector('[data-ckcat="' + no + '"]') || {}).value || '';
@@ -578,15 +715,31 @@ document.addEventListener('click', async function(e){
   if (a === 'cetak'){ S.view = 'cetak'; return render(); }
   if (a === 'pengguna'){ S.view = 'pengguna'; return render(); }
   if (a === 'printnow'){ return window.print(); }
+  if (a === 'lapcsv'){ return unduhCsv(); }
   if (a === 'pushOn'){ var m = await aktifkanPush(); return viewAkun(m ? { t: m } : { ok: true, t: 'Notifikasi diaktifkan di perangkat ini.' }); }
   if (a === 'pushOff'){ await matikanPush(); return viewAkun({ ok: true, t: 'Notifikasi dimatikan.' }); }
   if (a === 'selesaiPasien'){ await sb.from('pasien').update({ status:'selesai' }).eq('id', S.pasienId); S.view = 'list'; return render(); }
   if (a === 'keluar'){ await lepasPushLokal(); await sb.auth.signOut(); S.me = null; return showLogin(); }
 });
 
+document.addEventListener('input', function(e){
+  var t = e.target;
+  if (t.dataset && t.dataset.lapf === 'q'){ S.lap.q = t.value.trim(); gambarHasil(); }
+});
 document.addEventListener('change', async function(e){
   var t = e.target;
+  if (t.dataset && t.dataset.lap){
+    var k = t.dataset.lap, L = S.lap;
+    if (k === 'preset'){ if (t.value === 'kustom') return; aturPreset(t.value); document.getElementById('ld').value = L.dari; document.getElementById('ls').value = L.sampai; }
+    else if (k === 'dari'){ L.dari = t.value; document.getElementById('lp').value = 'kustom'; }
+    else if (k === 'sampai'){ L.sampai = t.value; document.getElementById('lp').value = 'kustom'; }
+    else if (k === 'petugas'){ L.petugas = t.value; }
+    if (L.dari && L.sampai) isiLaporan();
+    return;
+  }
+  if (t.dataset && t.dataset.lapf && t.dataset.lapf !== 'q'){ S.lap[t.dataset.lapf] = t.value; gambarHasil(); return; }
   if (t.dataset && t.dataset.ckcat){
+    if (S.ck && S.ck[+t.dataset.ckcat]) S.ck[+t.dataset.ckcat].catatan = t.value.trim() || null;
     var x = await sb.from('checklist').update({ catatan: t.value.trim() || null }).eq('pasien_id', S.pasienId).eq('no', +t.dataset.ckcat).eq('tgl_visite', S.ckTgl);
     if (x.error) alert('Gagal menyimpan catatan: ' + x.error.message);
   } else if (t.dataset && t.dataset.cktgl){
